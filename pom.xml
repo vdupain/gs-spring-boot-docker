@@ -13,23 +13,8 @@
         <version>1.4.2.RELEASE</version>
     </parent>
 
-	<!-- Elements pour le deploiement dans les repositories Generali -->
-	<distributionManagement>
-		<repository>
-			<id>artifacts-server</id>
-			<url>${dist.releases.url}</url>
-		</repository>
-		<snapshotRepository>
-			<id>artifacts-server</id>
-			<name>Snapshots Repository</name>
-			<url>${dist.snapshots.url}</url>
-		</snapshotRepository>
-	</distributionManagement>
-	
     <properties>
         <java.version>1.8</java.version>
-		<dist.snapshots.url>http://maven-proxy.groupe.generali.fr/nexus/content/repositories/projects-snapshots/</dist.snapshots.url>
-		<dist.releases.url>http://maven-proxy.groupe.generali.fr/nexus/content/repositories/projects-releases/</dist.releases.url>
     </properties>
 
     <dependencies>
