@@ -63,6 +63,7 @@ stage('approve') {
 node("docker") {
     docker.withServer('tcp://127.0.0.1:2375') {
         stage("Build docker image") {
+			unstash 'sources'
             unstash 'binary'
             def myEnv = docker.build 'spring-boot-demo:snapshot'
         }
