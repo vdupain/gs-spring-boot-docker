@@ -1,28 +1,37 @@
-node("usine") {
-    stage("checkout") {
-        checkout scm
+stage("checkout") {
+    node("usine") {
+        git changelog: false, poll: false, url: 'ssh://git@git.groupe.generali.fr:7999/sandbox/gs-spring-boot-docker.git'
+        stash name: 'sources', includes: '**/**'
     }
+}
 
-    stage("build & QA Scan") {
-        parallel 'build':{   
+stage("build & QA Scan") {
+    parallel 'build':{
+        node("usine") {
+          unstash 'sources'
           withEnv(["JAVA_HOME=${ tool 'JDK_8.0' }", "PATH+MAVEN=${tool 'M325'}/bin:${env.JAVA_HOME}/bin"]) {        
             sh "mvn clean package"
           }
           stash includes: "target/app.jar", name: 'binary'
-        }, 'QA Scan':{
-            def scannerHome = tool 'sonar-scanner'; 
-            withSonarQubeEnv('sonarqube-rec') {
-                withEnv(["JAVA_HOME=${ tool 'JDK_8.0' }", "PATH+MAVEN=${tool 'M325'}/bin:${env.JAVA_HOME}/bin"]) {        
-                // requires SonarQube Scanner for Maven 3.2+
-                sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
-                stash includes: "target/sonar/report-task.txt", name: 'sonar'
-				}
-            }
+        }
+    }, 'QA Scan':{
+        node("sonar") {
+          unstash 'sources'
+          def scannerHome = tool 'sonar-scanner'; 
+          withSonarQubeEnv('sonarqube-rec') {
+              withEnv(["JAVA_HOME=${ tool 'JDK_8.0' }", "PATH+MAVEN=${tool 'M325'}/bin:${env.JAVA_HOME}/bin"]) {        
+               // requires SonarQube Scanner for Maven 3.2+
+               sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+               stash includes: "target/sonar/report-task.txt", name: 'sonar-report-task'
+		      }
+          }
         }
     }
+}
 
-    stage("Quality Gate"){
-        unstash 'sonar'
+stage("Quality Gate"){
+    node("sonar") {
+        unstash 'sonar-report-task'
         def props = getProperties("target/sonar/report-task.txt")
         echo "properties=${props}"
         def sonarServerUrl=props.getProperty('serverUrl')
@@ -42,13 +51,12 @@ node("usine") {
         if ("ERROR".equals(qualitygateStatus)) {
             error  "Quality Gate failure"
         }
-
-    }
+   }
+}
     
-    stage('approve') {
-        timeout(time: 1, unit: 'MINUTES') {
-            input message: 'Do you want to continue?'
-        }
+stage('approve') {
+    timeout(time: 1, unit: 'MINUTES') {
+        input message: 'Do you want to continue?'
     }
 }
 
@@ -56,14 +64,14 @@ node("docker") {
     docker.withServer('tcp://127.0.0.1:2375') {
         stage("Build docker image") {
             unstash 'binary'
-            def myEnv = docker.build 'generali-spring-boot-demo:snapshot'
+            def myEnv = docker.build 'spring-boot-demo:snapshot'
         }
 
         stage("Run container") {
             timeout(time: 1, unit: 'MINUTES') {
                 input message: 'Do you want to test image?'
             }
-            docker.image('generali-spring-boot-demo:snapshot').withRun('-p 8080:8080') {c ->
+            docker.image('spring-boot-demo:snapshot').withRun('-p 8080:8080') {c ->
                 sh "docker logs ${c.id}"
                 timeout(1) {
                     input 'Stop container?'
