@@ -1,6 +1,6 @@
 stage("checkout") {
     node("usine") {
-        git changelog: false, poll: false, url: 'ssh://git@git.groupe.generali.fr:7999/sandbox/gs-spring-boot-docker.git'
+        checkout scm
         stash name: 'sources', includes: '**/**'
     }
 }

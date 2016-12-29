@@ -14,12 +14,12 @@ node("docker") {
     docker.withServer('tcp://127.0.0.1:2375') {
         stage("Build docker image") {
             unstash 'binary'
-            def myEnv = docker.build 'generali-spring-boot-demo:snapshot'
+            def myEnv = docker.build 'spring-boot-demo:snapshot'
         }
     
         stage("Run container") {
             unstash 'dockerfile'
-            docker.image('generali-spring-boot-demo:snapshot').withRun('-p 8080:8080') {c ->
+            docker.image('spring-boot-demo:snapshot').withRun('-p 8080:8080') {c ->
                 sh "docker logs ${c.id}"
                 timeout(1) {
                     input 'Continue?'
